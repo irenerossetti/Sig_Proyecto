@@ -1,0 +1,15 @@
+steps:
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'build'
+      - '--build-arg'
+      - 'NEXT_PUBLIC_API_URL=https://api.geoguard.site/api'
+      - '-t'
+      - 'gcr.io/$PROJECT_ID/geoguard-web:latest'
+      - '.'
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'push'
+      - 'gcr.io/$PROJECT_ID/geoguard-web:latest'
+images:
+  - 'gcr.io/$PROJECT_ID/geoguard-web:latest'

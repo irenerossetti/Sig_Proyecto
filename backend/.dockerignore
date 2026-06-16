@@ -1,0 +1,24 @@
+# .dockerignore para GeoGuard Backend
+.venv/
+venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.so
+.env
+.env.local
+.git/
+.gitignore
+.github/
+*.md
+*.log
+.DS_Store
+Thumbs.db
+media/*
+staticfiles/*
+.coverage
+htmlcov/
+.pytest_cache/
+.mypy_cache/

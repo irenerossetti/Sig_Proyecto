@@ -1,0 +1,24 @@
+# Python
+__pycache__/
+*.py[cod]
+*.sqlite3
+*.log
+
+# Environments
+.env
+.venv/
+venv/
+
+# IDEs
+.vscode/
+.idea/
+.pytest_cache/
+.mypy_cache/
+
+# Django
+staticfiles/
+media/
+
+# Firebase credentials (sensitive)
+firebase-credentials.json
+*-firebase-adminsdk-*.json
