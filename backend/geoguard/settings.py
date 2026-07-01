@@ -20,6 +20,7 @@ if not USE_GIS:
     from django.db import models as django_models
     
     class MockGeometryField(django_models.Field):
+        geom_type = 'Geometry'
         def __init__(self, *args, **kwargs):
             kwargs.pop('srid', None)
             kwargs.pop('geography', None)
@@ -30,12 +31,35 @@ if not USE_GIS:
             super().__init__(*args, **kwargs)
             
         def db_type(self, connection):
+            if connection.vendor == 'postgresql':
+                return f'geography({self.geom_type},4326)'
             return 'text'
             
         def deconstruct(self):
-            # Deconstruct as a standard django CharField/TextField to keep migrations happy
             name, path, args, kwargs = super().deconstruct()
-            return name, "django.db.models.TextField", args, {}
+            new_kwargs = {
+                'null': kwargs.get('null', True),
+                'blank': kwargs.get('blank', True),
+            }
+            return name, "django.db.models.TextField", args, new_kwargs
+            
+    class PointField(MockGeometryField):
+        geom_type = 'Point'
+        
+    class PolygonField(MockGeometryField):
+        geom_type = 'Polygon'
+        
+    class LineStringField(MockGeometryField):
+        geom_type = 'LineString'
+        
+    class MultiPointField(MockGeometryField):
+        geom_type = 'MultiPoint'
+        
+    class MultiPolygonField(MockGeometryField):
+        geom_type = 'MultiPolygon'
+        
+    class GeometryField(MockGeometryField):
+        geom_type = 'Geometry'
 
     gis_mod = types.ModuleType('django.contrib.gis')
     gis_mod.__path__ = []
@@ -56,9 +80,17 @@ if not USE_GIS:
     setattr(mock_gis_db_models, 'fields', mock_gis_db_models_fields)
     setattr(mock_gis_db_models, 'functions', mock_gis_db_models_functions)
     
-    for field_name in ['PointField', 'PolygonField', 'LineStringField', 'MultiPointField', 'MultiPolygonField', 'GeometryField']:
-        setattr(mock_gis_db_models_fields, field_name, MockGeometryField)
-        setattr(mock_gis_db_models, field_name, MockGeometryField)
+    mock_classes = {
+        'PointField': PointField,
+        'PolygonField': PolygonField,
+        'LineStringField': LineStringField,
+        'MultiPointField': MultiPointField,
+        'MultiPolygonField': MultiPolygonField,
+        'GeometryField': GeometryField,
+    }
+    for field_name, field_class in mock_classes.items():
+        setattr(mock_gis_db_models_fields, field_name, field_class)
+        setattr(mock_gis_db_models, field_name, field_class)
         
     setattr(mock_gis_db_models, 'models', django_models)
     
@@ -206,7 +238,6 @@ if "sqlite" not in DATABASES["default"]["ENGINE"]:
     DATABASES["default"]["CONN_HEALTH_CHECKS"] = True  # Verificar conexiones vivas
     DATABASES["default"]["OPTIONS"] = {
         "connect_timeout": 30,  # Aumentar timeout para Cloud SQL
-        "options": "-c statement_timeout=30000",  # 30s max por query
     }
 
 # Detect if GDAL is available for local development

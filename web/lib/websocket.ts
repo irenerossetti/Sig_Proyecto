@@ -48,11 +48,14 @@ class WebSocketService {
   private subscribedChildren: Set<number> = new Set();
 
   private getWebSocketUrl(): string {
+    if (process.env.NEXT_PUBLIC_WS_URL) {
+      return `${process.env.NEXT_PUBLIC_WS_URL}/ws/location/`;
+    }
     if (typeof window === "undefined") return "";
     
     const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
     const host = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1"
-      ? "localhost:8000"
+      ? "localhost:8001"
       : window.location.host;
     
     return `${protocol}//${host}/ws/location/`;

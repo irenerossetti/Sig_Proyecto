@@ -2,7 +2,7 @@ class ApiConstants {
   ApiConstants._();
 
   // Backend en VM (Django)
-  static const String baseUrl = 'https://api.geoguard.site';
+  static const String baseUrl = 'http://54.205.90.4';
 
   // Auth endpoints
   static const String login = '/api/auth/login/';

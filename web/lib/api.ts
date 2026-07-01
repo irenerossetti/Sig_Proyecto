@@ -1,7 +1,9 @@
 import axios, { AxiosError, InternalAxiosRequestConfig } from "axios";
 
-// Backend desplegado en api.geoguard.site
-const API_BASE_URL = "https://api.geoguard.site/api";
+// Backend desplegado en api.geoguard.site o usando URL local configurada
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL 
+  ? `${process.env.NEXT_PUBLIC_API_URL}/api`
+  : "https://api.geoguard.site/api";
 
 const api = axios.create({
   baseURL: API_BASE_URL,

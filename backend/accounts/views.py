@@ -98,8 +98,14 @@ def login_view(request):
             status=status.HTTP_400_BAD_REQUEST
         )
 
-    # Authenticate using email as username
-    user = authenticate(request, username=email, password=password)
+    # Buscar el username correspondiente al email ingresado para poder autenticar correctamente en Django
+    try:
+        user_obj = User.objects.get(email=email)
+        username_to_auth = user_obj.username
+    except User.DoesNotExist:
+        username_to_auth = email
+
+    user = authenticate(request, username=username_to_auth, password=password)
     
     if user is not None:
         login(request, user)

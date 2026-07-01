@@ -75,6 +75,12 @@ if HAS_POSTGIS:
         'last_location',
         gis_models.PointField(geography=True, null=True, blank=True, srid=4326)
     )
+else:
+    from geoguard.settings import PointField
+    Device.add_to_class(
+        'last_location',
+        PointField(null=True, blank=True)
+    )
 
 
 class SafeZone(models.Model):
@@ -292,6 +298,16 @@ if HAS_POSTGIS:
         'center_point',
         gis_models.PointField(geography=True, null=True, blank=True, srid=4326)
     )
+else:
+    from geoguard.settings import PolygonField, PointField
+    SafeZone.add_to_class(
+        'geometry',
+        PolygonField(null=True, blank=True)
+    )
+    SafeZone.add_to_class(
+        'center_point',
+        PointField(null=True, blank=True)
+    )
 
 
 class Alert(models.Model):
@@ -329,6 +345,20 @@ class Alert(models.Model):
 
     def __str__(self):
         return f"Alerta {self.id} - {self.child.full_name} ({self.status})"
+
+
+# Add dynamic location field to Alert
+if HAS_POSTGIS:
+    Alert.add_to_class(
+        'location',
+        gis_models.PointField(geography=True, null=True, blank=True, srid=4326)
+    )
+else:
+    from geoguard.settings import PointField
+    Alert.add_to_class(
+        'location',
+        PointField(null=True, blank=True)
+    )
 
 
 class ChildGroup(models.Model):
@@ -553,6 +583,16 @@ if HAS_POSTGIS:
     GroupSafeZone.add_to_class(
         'center_point',
         gis_models.PointField(geography=True, null=True, blank=True, srid=4326)
+    )
+else:
+    from geoguard.settings import PolygonField, PointField
+    GroupSafeZone.add_to_class(
+        'geometry',
+        PolygonField(null=True, blank=True)
+    )
+    GroupSafeZone.add_to_class(
+        'center_point',
+        PointField(null=True, blank=True)
     )
 
 
