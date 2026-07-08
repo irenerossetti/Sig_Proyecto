@@ -28,6 +28,8 @@ export default function NewSafeZonePage() {
   const [zoneType, setZoneType] = useState<"polygon" | "circle">("polygon");
   const [childId, setChildId] = useState(childIdParam || "");
   const [children, setChildren] = useState<Child[]>([]);
+  const [existingZones, setExistingZones] = useState<any[]>([]);
+  const [importZoneId, setImportZoneId] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [isLoadingChildren, setIsLoadingChildren] = useState(true);
   const [error, setError] = useState("");
@@ -40,22 +42,26 @@ export default function NewSafeZonePage() {
   // Get selected child's last known location for map centering
   const selectedChild = children.find((c) => c.id === parseInt(childId));
   const mapCenter: MapPoint = selectedChild?.device?.last_latitude && selectedChild?.device?.last_longitude
-    ? { lat: selectedChild.device.last_latitude, lng: selectedChild.device.last_longitude }
+    ? { lat: parseFloat(selectedChild.device.last_latitude.toString()), lng: parseFloat(selectedChild.device.last_longitude.toString()) }
     : { lat: -17.7833, lng: -63.1821 }; // Santa Cruz default
 
   useEffect(() => {
-    const fetchChildren = async () => {
+    const fetchChildrenAndZones = async () => {
       try {
-        const response = await api.get(API_ENDPOINTS.CHILDREN);
-        setChildren(response.data.results || response.data);
+        const [childrenRes, zonesRes] = await Promise.all([
+          api.get(API_ENDPOINTS.CHILDREN),
+          api.get(API_ENDPOINTS.SAFE_ZONES),
+        ]);
+        setChildren(childrenRes.data.results || childrenRes.data);
+        setExistingZones(zonesRes.data.results || zonesRes.data);
       } catch (err) {
-        console.error("Error fetching children:", err);
+        console.error("Error fetching data:", err);
       } finally {
         setIsLoadingChildren(false);
       }
     };
 
-    fetchChildren();
+    fetchChildrenAndZones();
   }, []);
 
   const handlePolygonChange = (points: MapPoint[]) => {
@@ -75,6 +81,33 @@ export default function NewSafeZonePage() {
       setCircleRadius(100);
     } else {
       setPolygonPoints([]);
+    }
+  };
+
+  const handleImportZoneChange = (zoneId: string) => {
+    setImportZoneId(zoneId);
+    if (!zoneId) return;
+
+    const zone = existingZones.find((z) => z.id === parseInt(zoneId));
+    if (zone) {
+      setName(zone.name);
+      setDescription(zone.description || "");
+      setZoneType(zone.zone_type);
+      if (zone.zone_type === "polygon") {
+        const points = (zone.polygon_points || []).map((p: any) => ({
+          lat: typeof p.lat === "string" ? parseFloat(p.lat) : p.lat,
+          lng: typeof p.lng === "string" ? parseFloat(p.lng) : p.lng,
+        }));
+        setPolygonPoints(points);
+        setCircleCenter(null);
+      } else {
+        setCircleCenter({
+          lat: typeof zone.center_latitude === "string" ? parseFloat(zone.center_latitude) : zone.center_latitude,
+          lng: typeof zone.center_longitude === "string" ? parseFloat(zone.center_longitude) : zone.center_longitude,
+        });
+        setCircleRadius(zone.radius_meters || 100);
+        setPolygonPoints([]);
+      }
     }
   };
 
@@ -179,6 +212,24 @@ export default function NewSafeZonePage() {
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
                 />
+
+                <div>
+                  <label className="block text-sm font-medium text-[#202124] dark:text-white mb-1">
+                    Importar de zona existente (Opcional)
+                  </label>
+                  <select
+                    value={importZoneId}
+                    onChange={(e) => handleImportZoneChange(e.target.value)}
+                    className="flex h-10 w-full rounded-xl border border-[#DADCE0] dark:border-[#404040] bg-white dark:bg-[#262626] px-3 py-2 text-sm text-[#202124] dark:text-white focus:outline-none focus:ring-2 focus:ring-[#1E8E3E]"
+                  >
+                    <option value="">-- Dibujar una nueva zona --</option>
+                    {existingZones.map((zone) => (
+                      <option key={zone.id} value={zone.id}>
+                        {zone.name} ({zone.child_name || (children.find(c => c.id === zone.child)?.full_name) || "Sin asignar"})
+                      </option>
+                    ))}
+                  </select>
+                </div>
 
                 <div>
                   <label className="block text-sm font-medium text-[#202124] dark:text-white mb-1">
