@@ -17,6 +17,7 @@ import {
   Megaphone,
   ChevronLeft,
   BarChart3,
+  Map,
 } from "lucide-react";
 
 interface SidebarProps {
@@ -35,6 +36,7 @@ const mainNavigation = [
 ];
 
 const monitoringNavigation = [
+  { name: "Mapa en vivo", href: "/live-map", icon: Map },
   { name: "Zonas Seguras", href: "/safe-zones", icon: MapPin },
   { name: "Alertas", href: "/alerts", icon: Bell },
   { name: "Notificaciones", href: "/notifications", icon: Megaphone },
