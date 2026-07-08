@@ -309,6 +309,25 @@ class DeviceViewSet(viewsets.ModelViewSet):
                         logger = logging.getLogger(__name__)
                         logger.error(f"Failed to send push notification: {e}")
 
+        # Update security status on device and save
+        device.is_in_safe_zone = is_safe
+        device.save(update_fields=['is_in_safe_zone'])
+
+        # Record entry in LocationHistory
+        try:
+            from monitoring.models_history import LocationHistory
+            LocationHistory.record_location(
+                device=device,
+                latitude=device.last_latitude,
+                longitude=device.last_longitude,
+                battery_level=device.battery_level,
+                is_in_safe_zone=is_safe
+            )
+        except Exception as history_error:
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(f"Error writing to LocationHistory in views: {history_error}")
+
     @extend_schema(
         summary="Actualizar ubicación por device_id",
         description="Actualiza la ubicación de un dispositivo usando su device_id. Endpoint público para la app tracker.",

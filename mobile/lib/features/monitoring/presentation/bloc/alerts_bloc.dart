@@ -1,8 +1,10 @@
+import 'dart:async';
 import 'package:equatable/equatable.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../../core/services/api_cache_service.dart';
+import '../../../../core/services/websocket_service.dart';
 import '../../../auth/presentation/bloc/auth_bloc.dart';
 import '../../data/monitoring_repository.dart';
 import '../../domain/monitoring_models.dart';
@@ -74,6 +76,7 @@ class AlertsBloc extends Bloc<AlertsEvent, AlertsState> {
   final MonitoringRepository _repo;
   final AuthBloc _authBloc;
   final ApiCacheService _cache = ApiCacheService();
+  StreamSubscription? _websocketSubscription;
   
   static const String _cacheKey = 'alerts_list';
 
@@ -85,6 +88,27 @@ class AlertsBloc extends Bloc<AlertsEvent, AlertsState> {
         super(AlertsInitial()) {
     on<AlertsFetchRequested>(_onFetchRequested);
     on<AlertsAddNew>(_onAddNew);
+
+    // Escuchar alertas del WebSocket en tiempo real
+    _websocketSubscription = WebSocketService().alerts.listen((realtimeAlert) {
+      final alert = AlertModel(
+        id: realtimeAlert.alertId,
+        childId: realtimeAlert.childId,
+        childName: realtimeAlert.childName,
+        message: realtimeAlert.message,
+        status: 'pending',
+        latitude: realtimeAlert.latitude,
+        longitude: realtimeAlert.longitude,
+        createdAt: realtimeAlert.timestamp,
+      );
+      add(AlertsAddNew(alert));
+    });
+  }
+
+  @override
+  Future<void> close() {
+    _websocketSubscription?.cancel();
+    return super.close();
   }
 
   Future<void> _onFetchRequested(

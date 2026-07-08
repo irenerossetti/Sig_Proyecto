@@ -253,9 +253,9 @@ class SafeZoneSerializer(serializers.ModelSerializer):
         read_only_fields = ["id", "child_name", "created_at", "updated_at"]
 
     def validate_child(self, value):
-        """Ensure the child belongs to the current user."""
+        """Ensure the child belongs to the current user (or user is staff)."""
         user = self.context["request"].user
-        if value.tutor != user:
+        if not user.is_staff and value.tutor != user:
             raise serializers.ValidationError("Este niño no pertenece al tutor.")
         return value
 

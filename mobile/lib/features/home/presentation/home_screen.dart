@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
@@ -20,6 +21,7 @@ import '../../../core/config/theme_cubit.dart';
 import '../../../core/di/injection_container.dart';
 import '../../../core/utils/date_utils.dart' as date_utils;
 import '../../../core/utils/ui_utils.dart' as ui_utils;
+import '../../../core/services/websocket_service.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({
@@ -44,6 +46,7 @@ class _HomeScreenState extends State<HomeScreen> {
   
   // Control de tabs visitados para lazy loading
   final Set<int> _visitedTabs = {0}; // Dashboard siempre cargado
+  StreamSubscription? _websocketAlertSubscription;
 
   void _onTabSelected(int index) {
     _previousIndex = _currentIndex;
@@ -73,6 +76,55 @@ class _HomeScreenState extends State<HomeScreen> {
     context.read<GroupsBloc>().add(const GroupsFetchRequested());
     
     _applyInitialParams();
+
+    // Escuchar alertas del WebSocket para mostrar un SnackBar rojo emergente en tiempo real
+    _websocketAlertSubscription = WebSocketService().alerts.listen((alert) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).clearSnackBars();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                const Icon(LucideIcons.bellRing, color: Colors.white, size: 24),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        '¡ALERTA! ${alert.childName}',
+                        style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
+                      ),
+                      Text(
+                        alert.message,
+                        style: const TextStyle(color: Colors.white),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            backgroundColor: Theme.of(context).colorScheme.error,
+            duration: const Duration(seconds: 7),
+            action: SnackBarAction(
+              label: 'VER',
+              textColor: Colors.white,
+              onPressed: () {
+                _onTabSelected(3); // Cambiar a la pestaña del mapa (3)
+                context.read<MapBloc>().add(MapChildSelected(alert.childId));
+              },
+            ),
+          ),
+        );
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _websocketAlertSubscription?.cancel();
+    super.dispose();
   }
 
   @override

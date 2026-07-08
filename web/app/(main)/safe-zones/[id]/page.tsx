@@ -88,7 +88,10 @@ export default function SafeZoneDetailPage() {
 
     // For polygons - calculate center from polygon points
     if (zone.polygon_points && zone.polygon_points.length >= 3) {
-      const points = zone.polygon_points;
+      const points = zone.polygon_points.map(p => ({
+        lat: Number(p.lat ?? p.latitude ?? 0),
+        lng: Number(p.lng ?? p.longitude ?? 0)
+      }));
       const centerLat = points.reduce((sum, p) => sum + p.lat, 0) / points.length;
       const centerLng = points.reduce((sum, p) => sum + p.lng, 0) / points.length;
 

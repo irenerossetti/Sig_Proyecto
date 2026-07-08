@@ -125,6 +125,17 @@ class SafeZone(models.Model):
     
     def _sync_geometry(self):
         """Sync PostGIS geometry fields from legacy JSON/coordinate fields."""
+        # Calculate polygon centroid if polygon points are available
+        if self.polygon_points and len(self.polygon_points) >= 3:
+            try:
+                lats = [float(p['lat']) for p in self.polygon_points if 'lat' in p]
+                lngs = [float(p['lng']) for p in self.polygon_points if 'lng' in p]
+                if lats and lngs:
+                    self.center_latitude = sum(lats) / len(lats)
+                    self.center_longitude = sum(lngs) / len(lngs)
+            except (KeyError, ValueError, TypeError):
+                pass
+
         if not HAS_POSTGIS:
             return
             
@@ -497,6 +508,17 @@ class GroupSafeZone(models.Model):
     
     def _sync_geometry(self):
         """Sync PostGIS geometry fields from legacy JSON/coordinate fields."""
+        # Calculate polygon centroid if polygon points are available
+        if self.polygon_points and len(self.polygon_points) >= 3:
+            try:
+                lats = [float(p['lat']) for p in self.polygon_points if 'lat' in p]
+                lngs = [float(p['lng']) for p in self.polygon_points if 'lng' in p]
+                if lats and lngs:
+                    self.center_latitude = sum(lats) / len(lats)
+                    self.center_longitude = sum(lngs) / len(lngs)
+            except (KeyError, ValueError, TypeError):
+                pass
+
         if not HAS_POSTGIS:
             return
             

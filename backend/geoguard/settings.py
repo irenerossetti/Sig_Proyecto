@@ -6,13 +6,25 @@ import environ
 import sys
 import types
 
+BASE_DIR = Path(__file__).resolve().parent.parent
+
+# Read .env file early so that environmental variables are available for GIS checks
+env = environ.Env(
+    DEBUG=(bool, False),
+)
+ENV_FILE = BASE_DIR / ".env"
+if ENV_FILE.exists():
+    environ.Env.read_env(ENV_FILE)
+
 # ----------------- GIS Mocking for non-GDAL setups (e.g. SQLite on Windows) -----------------
 # This allows Django migrations to load and run without requiring external GDAL binaries.
 USE_GIS = os.getenv("CLOUD_RUN") == "True" or os.getenv("USE_POSTGIS") == "True"
-if not USE_GIS:
+if USE_GIS:
+    # Double check if GDAL is actually available on this system
     try:
         from django.contrib.gis.gdal import HAS_GDAL
-        USE_GIS = HAS_GDAL
+        if not HAS_GDAL:
+            USE_GIS = False
     except Exception:
         USE_GIS = False
 
@@ -112,15 +124,6 @@ if not USE_GIS:
     django.contrib.gis = gis_mod
 # --------------------------------------------------------------------------------------------
 
-BASE_DIR = Path(__file__).resolve().parent.parent
-
-env = environ.Env(
-    DEBUG=(bool, False),
-)
-ENV_FILE = BASE_DIR / ".env"
-if ENV_FILE.exists():
-    environ.Env.read_env(ENV_FILE)
-
 SECRET_KEY = env("SECRET_KEY", default="django-insecure-change-me")
 DEBUG = env("DEBUG", default=False)
 ALLOWED_HOSTS = env.list("ALLOWED_HOSTS", default=["localhost", "127.0.0.1"])
@@ -154,15 +157,6 @@ INSTALLED_APPS = [
     "accounts",
     "monitoring",
 ]
-
-# Add GIS apps only if GDAL is available or in Cloud Run
-USE_GIS = os.getenv("CLOUD_RUN") == "True" or os.getenv("USE_POSTGIS") == "True"
-if not USE_GIS:
-    try:
-        from django.contrib.gis.gdal import HAS_GDAL
-        USE_GIS = HAS_GDAL
-    except Exception:
-        USE_GIS = False
 
 if USE_GIS:
     # Insert GIS apps after staticfiles
@@ -240,28 +234,24 @@ if "sqlite" not in DATABASES["default"]["ENGINE"]:
         "connect_timeout": 30,  # Aumentar timeout para Cloud SQL
     }
 
-# Detect if GDAL is available for local development
-USE_POSTGIS = os.getenv("CLOUD_RUN") == "True" or os.getenv("USE_POSTGIS") == "True"
-
-# Try to detect GDAL on local development
-if not USE_POSTGIS:
-    try:
-        from django.contrib.gis.gdal import HAS_GDAL
-        USE_POSTGIS = HAS_GDAL
-    except Exception:
-        USE_POSTGIS = False
-
 # Cloud Run: usar socket Unix, GCE VM: usar conexión directa con PostGIS
-if os.getenv("CLOUD_RUN") == "True":
+if os.getenv("CLOUD_RUN") == "True" and USE_GIS:
     # En Cloud Run usamos PostGIS con soporte geoespacial completo via Unix socket
     DATABASES["default"]["ENGINE"] = "django.contrib.gis.db.backends.postgis"
     DATABASES["default"]["HOST"] = "/cloudsql/geoguard-478318:us-central1:geoguard"
     print(f"DEBUG: Running in Cloud Run with PostGIS. CLOUD_RUN={os.getenv('CLOUD_RUN')}")
     print(f"DEBUG: DB Config: HOST={DATABASES['default']['HOST']}, NAME={DATABASES['default']['NAME']}")
-elif USE_POSTGIS:
+elif USE_GIS:
     # En GCE VM o desarrollo local con GDAL/PostGIS disponible
     DATABASES["default"]["ENGINE"] = "django.contrib.gis.db.backends.postgis"
     print(f"DEBUG: Using PostGIS. HOST={DATABASES['default'].get('HOST', 'from DATABASE_URL')}")
+else:
+    # Si GDAL no está disponible, usar el backend estándar de Postgres o Sqlite
+    if "postgis" in DATABASES["default"]["ENGINE"] or "postgresql" in DATABASES["default"]["ENGINE"]:
+        DATABASES["default"]["ENGINE"] = "django.db.backends.postgresql"
+        print("DEBUG: GDAL missing. Falling back to django.db.backends.postgresql engine")
+    else:
+        print("DEBUG: Using default non-GIS database engine")
 
 REST_FRAMEWORK = {
     "DEFAULT_PERMISSION_CLASSES": [

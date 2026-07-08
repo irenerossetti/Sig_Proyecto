@@ -637,7 +637,7 @@ class _ChildMapViewState extends State<ChildMapView> with AutomaticKeepAliveClie
   Set<Polygon> _buildSafeZonePolygons() {
     if (!_showSafeZones || _safeZones.isEmpty) return {};
     
-    return _safeZones.where((zone) => zone.isActive && zone.polygonPoints.length >= 3).map((zone) {
+    return _safeZones.where((zone) => zone.isActive && zone.zoneType == 'polygon' && zone.polygonPoints.length >= 3).map((zone) {
       final color = _parseZoneColor(zone.color);
       final points = zone.polygonPoints.map((p) => LatLng(p.lat, p.lng)).toList();
       
@@ -651,6 +651,49 @@ class _ChildMapViewState extends State<ChildMapView> with AutomaticKeepAliveClie
         onTap: () => _showZoneInfo(zone),
       );
     }).toSet();
+  }
+
+  /// Construye los círculos de las zonas seguras circulares
+  Set<Circle> _buildSafeZoneCircles() {
+    if (!_showSafeZones || _safeZones.isEmpty) return {};
+    
+    return _safeZones
+        .where((zone) => zone.isActive && zone.zoneType == 'circle' && zone.centerLatitude != null && zone.centerLongitude != null)
+        .map((zone) {
+      final color = _parseZoneColor(zone.color);
+      
+      return Circle(
+        circleId: CircleId('safe_zone_circle_${zone.id}'),
+        center: LatLng(zone.centerLatitude!, zone.centerLongitude!),
+        radius: (zone.radiusMeters ?? 100).toDouble(),
+        fillColor: color.withValues(alpha: 0.2),
+        strokeColor: color,
+        strokeWidth: 3,
+        consumeTapEvents: true,
+        onTap: () => _showZoneInfo(zone),
+      );
+    }).toSet();
+  }
+
+  /// Algoritmo de Haversine para verificar si un punto está dentro de un círculo
+  bool _isPointInCircle(double lat, double lng, SafeZoneModel zone) {
+    if (zone.centerLatitude == null || zone.centerLongitude == null) return false;
+    
+    const double r = 6371000; // Radio de la Tierra en metros
+    final lat1 = lat * math.pi / 180;
+    final lon1 = lng * math.pi / 180;
+    final lat2 = zone.centerLatitude! * math.pi / 180;
+    final lon2 = zone.centerLongitude! * math.pi / 180;
+    
+    final dlat = lat2 - lat1;
+    final dlon = lon2 - lon1;
+    
+    final a = math.sin(dlat / 2) * math.sin(dlat / 2) +
+        math.cos(lat1) * math.cos(lat2) * math.sin(dlon / 2) * math.sin(dlon / 2);
+    final c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a));
+    final distance = r * c;
+    
+    return distance <= (zone.radiusMeters ?? 100);
   }
 
   /// Muestra información de la zona segura
@@ -702,7 +745,9 @@ class _ChildMapViewState extends State<ChildMapView> with AutomaticKeepAliveClie
                         ),
                       ),
                       Text(
-                        'Zona segura · ${zone.polygonPoints.length} puntos',
+                        zone.zoneType == 'circle'
+                            ? 'Zona segura · Círculo (${zone.radiusMeters ?? 100}m)'
+                            : 'Zona segura · Polígono (${zone.polygonPoints.length} puntos)',
                         style: Theme.of(context).textTheme.bodySmall?.copyWith(
                           color: Theme.of(context).colorScheme.onSurfaceVariant,
                         ),
@@ -745,8 +790,10 @@ class _ChildMapViewState extends State<ChildMapView> with AutomaticKeepAliveClie
       return const SizedBox.shrink();
     }
     
-    // Verificar si está dentro usando ray casting
-    final isInside = _isPointInPolygon(lat, lng, zone.polygonPoints);
+    // Verificar si está dentro usando el algoritmo adecuado
+    final isInside = zone.zoneType == 'circle'
+        ? _isPointInCircle(lat, lng, zone)
+        : _isPointInPolygon(lat, lng, zone.polygonPoints);
     
     return Container(
       padding: const EdgeInsets.all(12),
@@ -916,6 +963,7 @@ class _ChildMapViewState extends State<ChildMapView> with AutomaticKeepAliveClie
               strokeColor: Colors.blue.withValues(alpha: 0.5),
               strokeWidth: 2,
             ),
+            ..._buildSafeZoneCircles(),
           },
           // Zonas seguras (polígonos)
           polygons: _buildSafeZonePolygons(),

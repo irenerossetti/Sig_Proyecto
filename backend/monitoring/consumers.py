@@ -355,6 +355,19 @@ class TrackerConsumer(AsyncWebsocketConsumer):
             device.is_in_safe_zone = is_safe
             device.save()
             
+            # Registrar en el historial de ubicación
+            try:
+                from monitoring.models_history import LocationHistory
+                LocationHistory.record_location(
+                    device=device,
+                    latitude=device.last_latitude,
+                    longitude=device.last_longitude,
+                    battery_level=device.battery_level,
+                    is_in_safe_zone=is_safe
+                )
+            except Exception as history_error:
+                logger.error(f"Error writing to LocationHistory in consumers: {history_error}")
+            
             alert_data = None
             sent_notifications = set()  # Evitar duplicados por usuario
             
