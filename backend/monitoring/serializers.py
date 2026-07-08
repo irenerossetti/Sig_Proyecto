@@ -123,6 +123,34 @@ class ChildSerializer(serializers.ModelSerializer):
     tutor = serializers.IntegerField(source='tutor.id', read_only=True)
     tutor_name = serializers.CharField(source='tutor.full_name', read_only=True)
 
+    # Legacy fields for compatibility with web client
+    first_name = serializers.CharField(required=False, allow_blank=True, write_only=True)
+    last_name = serializers.CharField(required=False, allow_blank=True, write_only=True)
+    grade = serializers.CharField(required=False, allow_blank=True, allow_null=True, write_only=True)
+
+    def to_internal_value(self, data):
+        # Merge first_name and last_name into full_name if full_name is not provided
+        if 'full_name' not in data and ('first_name' in data or 'last_name' in data):
+            first = data.get('first_name') or ''
+            last = data.get('last_name') or ''
+            data = data.copy()
+            data['full_name'] = f"{first} {last}".strip()
+        # Map grade to notes
+        if 'grade' in data and 'notes' not in data:
+            data = data.copy()
+            data['notes'] = data.get('grade')
+        return super().to_internal_value(data)
+
+    def to_representation(self, instance):
+        ret = super().to_representation(instance)
+        # Parse full_name back into first_name and last_name for representation
+        full_name = instance.full_name or ""
+        parts = full_name.split(' ', 1)
+        ret['first_name'] = parts[0] if parts else ""
+        ret['last_name'] = parts[1] if len(parts) > 1 else ""
+        ret['grade'] = instance.notes
+        return ret
+
     class Meta:
         model = Child
         fields = [
