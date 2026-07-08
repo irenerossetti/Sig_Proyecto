@@ -156,10 +156,13 @@ class ChildSerializer(serializers.ModelSerializer):
         fields = [
             "id",
             "full_name",
+            "first_name",
+            "last_name",
             "date_of_birth",
             "photo",
             "photo_url",
             "notes",
+            "grade",
             "is_active",
             "created_at",
             "updated_at",
