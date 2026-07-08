@@ -8,7 +8,7 @@ from django.conf import settings
 try:
     from django.contrib.gis.db import models as gis_models
     from django.contrib.gis.geos import Point
-    HAS_POSTGIS = True
+    HAS_POSTGIS = getattr(settings, 'USE_GIS', False)
 except (ImportError, Exception):
     HAS_POSTGIS = False
     gis_models = None

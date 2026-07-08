@@ -9,7 +9,7 @@ try:
     from django.contrib.gis.geos import Point, Polygon
     from django.contrib.gis.db.models.functions import Distance
     from django.contrib.gis.measure import D
-    HAS_POSTGIS = True
+    HAS_POSTGIS = getattr(settings, 'USE_GIS', False)
 except (ImportError, Exception):
     HAS_POSTGIS = False
     gis_models = None
