@@ -4,7 +4,7 @@ class ApiConstants {
   // Backend en VM (Django)
   static const String baseUrl = String.fromEnvironment(
     'GEOGUARD_API_BASE',
-    defaultValue: 'https://api.geoguard.site',
+    defaultValue: 'http://54.205.90.4',
   );
 
   static const String login = '/api/auth/login/';
