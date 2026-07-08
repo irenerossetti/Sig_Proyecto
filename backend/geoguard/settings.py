@@ -198,25 +198,12 @@ WSGI_APPLICATION = "geoguard.wsgi.application"
 ASGI_APPLICATION = "geoguard.asgi.application"
 
 # Channel Layers para WebSockets
-# En producción usamos Redis si está disponible, sino InMemory
-REDIS_URL = os.getenv("REDIS_URL")
-if REDIS_URL:
-    CHANNEL_LAYERS = {
-        "default": {
-            "BACKEND": "channels_redis.core.RedisChannelLayer",
-            "CONFIG": {
-                "hosts": [REDIS_URL],
-            },
-        },
-    }
-else:
-    # InMemory para desarrollo local o cuando Redis no está disponible
-    # Nota: InMemory no funciona entre múltiples instancias de Cloud Run
-    CHANNEL_LAYERS = {
-        "default": {
-            "BACKEND": "channels.layers.InMemoryChannelLayer",
-        },
-    }
+# Usamos InMemoryChannelLayer para evitar timeouts y desconexiones de Redis
+CHANNEL_LAYERS = {
+    "default": {
+        "BACKEND": "channels.layers.InMemoryChannelLayer",
+    },
+}
 
 DATABASES = {
     "default": env.db(

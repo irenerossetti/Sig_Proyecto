@@ -405,6 +405,8 @@ class TrackerConsumer(AsyncWebsocketConsumer):
                         'message': alert.message,
                         'created_at': alert.created_at.isoformat(),
                         'type': 'zone_exit',
+                        'latitude': float(alert.latitude) if alert.latitude else 0.0,
+                        'longitude': float(alert.longitude) if alert.longitude else 0.0,
                     }
                     
                     # Enviar notificación push con nombre de zona
@@ -652,8 +654,6 @@ class TrackerConsumer(AsyncWebsocketConsumer):
     
     async def _broadcast_alert(self, alert_data):
         """Broadcast alert to tutor."""
-        from django.utils import timezone
-        
         tutor_group = f"tutor_{self.tutor_id}"
         await self.channel_layer.group_send(
             tutor_group,
@@ -663,8 +663,8 @@ class TrackerConsumer(AsyncWebsocketConsumer):
                 'child_id': self.child_id,
                 'child_name': self.child_name,
                 'message': alert_data['message'],
-                'latitude': float(self.scope.get('latitude', 0)),
-                'longitude': float(self.scope.get('longitude', 0)),
+                'latitude': alert_data.get('latitude', 0.0),
+                'longitude': alert_data.get('longitude', 0.0),
                 'timestamp': alert_data['created_at'],
             }
         )
