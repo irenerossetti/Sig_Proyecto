@@ -32,6 +32,8 @@ def initialize_firebase():
         if os.getenv('FIREBASE_CREDENTIALS'):
             import json
             cred_dict = json.loads(os.getenv('FIREBASE_CREDENTIALS'))
+            if 'private_key' in cred_dict:
+                cred_dict['private_key'] = cred_dict['private_key'].replace('\\n', '\n')
             cred = credentials.Certificate(cred_dict)
         elif os.path.exists(cred_path):
             cred = credentials.Certificate(cred_path)
