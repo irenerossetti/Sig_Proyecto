@@ -197,6 +197,9 @@ class ChildSerializer(serializers.ModelSerializer):
         return False
 
     def create(self, validated_data):
+        validated_data.pop('first_name', None)
+        validated_data.pop('last_name', None)
+        validated_data.pop('grade', None)
         photo = validated_data.pop('photo', None)
         instance = super().create(validated_data)
         
@@ -218,6 +221,9 @@ class ChildSerializer(serializers.ModelSerializer):
         return instance
 
     def update(self, instance, validated_data):
+        validated_data.pop('first_name', None)
+        validated_data.pop('last_name', None)
+        validated_data.pop('grade', None)
         photo = validated_data.pop('photo', None)
         
         if photo:
