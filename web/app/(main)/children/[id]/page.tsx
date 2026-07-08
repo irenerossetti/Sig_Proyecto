@@ -37,6 +37,12 @@ export default function ChildDetailPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // States for copying/associating existing zones
+  const [allExistingZones, setAllExistingZones] = useState<SafeZone[]>([]);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [selectedZoneId, setSelectedZoneId] = useState("");
+  const [isCopying, setIsCopying] = useState(false);
+
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -66,6 +72,57 @@ export default function ChildDetailPage() {
       fetchData();
     }
   }, [id]);
+
+  const openCopyModal = async () => {
+    setIsModalOpen(true);
+    try {
+      const response = await api.get(API_ENDPOINTS.SAFE_ZONES);
+      const zones = response.data.results || response.data;
+      // Filter out zones already assigned to this child
+      setAllExistingZones(zones.filter((z: SafeZone) => z.child !== parseInt(id)));
+    } catch (err) {
+      console.error("Error loading safe zones:", err);
+    }
+  };
+
+  const handleCopyZone = async () => {
+    if (!selectedZoneId) return;
+    setIsCopying(true);
+    try {
+      const zoneToCopy = allExistingZones.find((z) => z.id === parseInt(selectedZoneId));
+      if (zoneToCopy) {
+        const payload: any = {
+          name: zoneToCopy.name,
+          description: zoneToCopy.description || "",
+          zone_type: zoneToCopy.zone_type,
+          child: parseInt(id),
+          is_active: true,
+        };
+        if (zoneToCopy.zone_type === "polygon") {
+          payload.polygon_points = zoneToCopy.polygon_points;
+        } else {
+          payload.center_latitude = zoneToCopy.center_latitude;
+          payload.center_longitude = zoneToCopy.center_longitude;
+          payload.radius_meters = zoneToCopy.radius_meters;
+        }
+        
+        await api.post(API_ENDPOINTS.SAFE_ZONES, payload);
+        
+        // Refresh zones list
+        const zonesRes = await api.get(API_ENDPOINTS.SAFE_ZONES);
+        const allZones = zonesRes.data.results || zonesRes.data;
+        setSafeZones(allZones.filter((z: SafeZone) => z.child === parseInt(id)));
+        
+        // Close modal
+        setIsModalOpen(false);
+        setSelectedZoneId("");
+      }
+    } catch (err) {
+      console.error("Error copying zone:", err);
+    } finally {
+      setIsCopying(false);
+    }
+  };
 
   if (isLoading) {
     return <Loading text="Cargando..." />;
@@ -226,9 +283,14 @@ export default function ChildDetailPage() {
             <MapPin className="h-5 w-5 text-[#1E8E3E] dark:text-[#4ade80]" />
             Zonas seguras
           </CardTitle>
-          <Link href={`/safe-zones/new?child=${id}`}>
-            <Button size="sm">Agregar zona</Button>
-          </Link>
+          <div className="flex gap-2">
+            <Button size="sm" variant="outline" onClick={openCopyModal}>
+              Copiar existente
+            </Button>
+            <Link href={`/safe-zones/new?child=${id}`}>
+              <Button size="sm">Agregar zona</Button>
+            </Link>
+          </div>
         </CardHeader>
         <CardContent>
           {safeZones.length === 0 ? (
@@ -295,6 +357,56 @@ export default function ChildDetailPage() {
           )}
         </CardContent>
       </Card>
+
+      {/* Associate Existing Zone Modal */}
+      {isModalOpen && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <Card className="w-full max-w-md bg-white dark:bg-[#1f1f1f] shadow-xl rounded-2xl border border-[#E8EAED] dark:border-[#404040]">
+            <CardHeader>
+              <CardTitle className="text-lg text-[#202124] dark:text-white">Asociar zona segura existente</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <p className="text-sm text-[#5F6368] dark:text-[#9AA0A6]">
+                Elige una zona segura de otro niño para duplicarla y asignarla a este niño:
+              </p>
+              <div>
+                <select
+                  value={selectedZoneId}
+                  onChange={(e) => setSelectedZoneId(e.target.value)}
+                  className="w-full h-10 rounded-xl border border-[#DADCE0] dark:border-[#404040] bg-white dark:bg-[#262626] px-3 py-2 text-sm text-[#202124] dark:text-white focus:outline-none focus:ring-2 focus:ring-[#1E8E3E]"
+                >
+                  <option value="">Selecciona una zona...</option>
+                  {allExistingZones.map((zone) => (
+                    <option key={zone.id} value={zone.id}>
+                      {zone.name} ({zone.child_name || "Otro niño"})
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </CardContent>
+            <CardFooter className="flex justify-end gap-3 pt-4 border-t border-[#E8EAED] dark:border-[#404040]">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setIsModalOpen(false);
+                  setSelectedZoneId("");
+                }}
+                disabled={isCopying}
+              >
+                Cancelar
+              </Button>
+              <Button
+                size="sm"
+                onClick={handleCopyZone}
+                disabled={!selectedZoneId || isCopying}
+              >
+                {isCopying ? "Copiando..." : "Asociar zona"}
+              </Button>
+            </CardFooter>
+          </Card>
+        </div>
+      )}
     </div>
   );
 }
