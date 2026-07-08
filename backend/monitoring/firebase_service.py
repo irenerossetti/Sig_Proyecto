@@ -121,7 +121,7 @@ def send_push_notification(fcm_token: str, title: str, body: str, data: dict = N
         return False
 
 
-def send_zone_exit_alert(tutor, child_name: str, alert_id: int = None, latitude: float = None, longitude: float = None, group_name: str = None, zone_name: str = None) -> bool:
+def send_zone_exit_alert(tutor, child_name: str, alert_id: int = None, latitude: float = None, longitude: float = None, group_name: str = None, zone_name: str = None, child_id: int = None) -> bool:
     """
     Notificación cuando un niño SALE de la zona segura.
     Incluye la dirección si está disponible.
@@ -134,6 +134,7 @@ def send_zone_exit_alert(tutor, child_name: str, alert_id: int = None, latitude:
         longitude: Longitud de la ubicación
         group_name: Nombre del grupo (si es alerta de grupo)
         zone_name: Nombre de la zona (individual o de grupo)
+        child_id: ID del niño
     """
     if not tutor.fcm_token:
         logger.warning(f"Tutor {tutor.email} has no FCM token")
@@ -168,6 +169,7 @@ def send_zone_exit_alert(tutor, child_name: str, alert_id: int = None, latitude:
     data = {
         'type': 'zone_exit',
         'child_name': child_name,
+        'child_id': str(child_id) if child_id else '',
         'alert_id': str(alert_id) if alert_id else '',
         'address': address or '',
         'latitude': str(latitude) if latitude else '',

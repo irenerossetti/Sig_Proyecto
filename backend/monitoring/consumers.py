@@ -416,7 +416,8 @@ class TrackerConsumer(AsyncWebsocketConsumer):
                             alert.id, 
                             latitude, 
                             longitude,
-                            zone_name=zone_names[0] if len(zone_names) == 1 else None
+                            zone_name=zone_names[0] if len(zone_names) == 1 else None,
+                            child_id=child.id
                         )
                         sent_notifications.add(tutor.id)
                         logger.info(f"Individual zone exit notification sent for {child.full_name}")
@@ -472,7 +473,8 @@ class TrackerConsumer(AsyncWebsocketConsumer):
                                 latitude, 
                                 longitude,
                                 group_name=group.name,
-                                zone_name=zone.name
+                                zone_name=zone.name,
+                                child_id=child.id
                             )
                             sent_notifications.add(group.owner.id)
                             logger.info(f"Group zone exit notification sent to owner {group.owner.email}")
@@ -491,7 +493,8 @@ class TrackerConsumer(AsyncWebsocketConsumer):
                                     latitude, 
                                     longitude,
                                     group_name=group.name,
-                                    zone_name=zone.name
+                                    zone_name=zone.name,
+                                    child_id=child.id
                                 )
                                 sent_notifications.add(group_tutor.tutor.id)
                                 logger.info(f"Group zone exit notification sent to tutor {group_tutor.tutor.email}")

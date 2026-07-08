@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:ui' show Color;
 import 'package:firebase_core/firebase_core.dart';
@@ -20,6 +21,19 @@ class NotificationService {
   final FirebaseMessaging _firebaseMessaging = FirebaseMessaging.instance;
   final FlutterLocalNotificationsPlugin _localNotifications = FlutterLocalNotificationsPlugin();
   
+  String? _pendingRedirectPath;
+  final _onTapController = StreamController<String>.broadcast();
+  Stream<String> get onNotificationTap {
+    if (_pendingRedirectPath != null) {
+      final path = _pendingRedirectPath!;
+      _pendingRedirectPath = null;
+      Future.delayed(const Duration(milliseconds: 600), () {
+        _onTapController.add(path);
+      });
+    }
+    return _onTapController.stream;
+  }
+
   String? _fcmToken;
   String? get fcmToken => _fcmToken;
 
@@ -88,10 +102,20 @@ class NotificationService {
     await _localNotifications.initialize(
       initSettings,
       onDidReceiveNotificationResponse: (response) {
-        // Manejar tap en notificación local
         if (response.payload != null) {
-          final data = jsonDecode(response.payload!);
-          debugPrint('Notification tapped with payload: $data');
+          try {
+            final data = jsonDecode(response.payload!) as Map<String, dynamic>;
+            debugPrint('Local notification tapped with payload: $data');
+            final type = data['type'];
+            final childId = data['child_id'];
+            if (type == 'zone_exit' && childId != null) {
+              _triggerRedirect('/home?tab=3&childId=$childId');
+            } else {
+              _triggerRedirect('/home?tab=2');
+            }
+          } catch (e) {
+            debugPrint('Error parsing local notification payload: $e');
+          }
         }
       },
     );
@@ -153,11 +177,21 @@ class NotificationService {
   void _handleNotificationTap(RemoteMessage message) {
     debugPrint('Notification tapped: ${message.data}');
     
-    // Aquí puedes navegar a una pantalla específica según el tipo de notificación
     final type = message.data['type'];
-    if (type == 'safe_zone_alert') {
-      // Navegar a la pantalla de alertas
-      // Esto se puede hacer con un callback o usando un NavigatorKey global
+    final childId = message.data['child_id'];
+    
+    if (type == 'zone_exit' && childId != null) {
+      _triggerRedirect('/home?tab=3&childId=$childId');
+    } else {
+      _triggerRedirect('/home?tab=2'); // Default to Alerts tab
+    }
+  }
+
+  void _triggerRedirect(String path) {
+    if (_onTapController.hasListener) {
+      _onTapController.add(path);
+    } else {
+      _pendingRedirectPath = path;
     }
   }
 

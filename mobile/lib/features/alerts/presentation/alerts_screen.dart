@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../monitoring/presentation/bloc/alerts_bloc.dart';
 import '../../monitoring/domain/monitoring_models.dart';
@@ -114,7 +115,8 @@ class _AlertTile extends StatelessWidget {
       clipBehavior: Clip.antiAlias,
       child: InkWell(
         onTap: () {
-          // Handle alert tap
+          // Redirigir a la pestaña del mapa interactivo centrado en el niño
+          context.go('/home?tab=3&childId=${alert.childId}');
         },
         child: Padding(
           padding: const EdgeInsets.all(16),
